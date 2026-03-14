@@ -1,9 +1,20 @@
 # Common Patterns — Shared Reference
 
 Shared protocols used by both multi-agent and single-agent execution modes.
+Phase-specific docs reference this file instead of repeating these patterns.
 
 All examples use `{site}`, `{projectKey}` as placeholders.
 Credentials are sourced from environment: `$ATLASSIAN_EMAIL`, `$ATLASSIAN_API_TOKEN`.
+
+## Contents
+
+- [Transition Protocol](#transition-protocol)
+- [Starting a Ticket](#starting-a-ticket)
+- [Publishing Findings](#publishing-findings)
+- [Completing a Ticket](#completing-a-ticket)
+- [Updating the Confluence Plan Page](#updating-the-confluence-plan-page)
+- [Dependency Ordering](#dependency-ordering)
+- [JQL Patterns](#jql-patterns)
 
 **Confluence API versions:** Use v2 (`/wiki/api/v2/`) for page CRUD (create, read, update) and comments. Use v1 (`/wiki/rest/api/`) for CQL search and comment replies — the v2 equivalents have different behavior or return errors. See [confluence-comments.md](confluence-comments.md) for details on comment threading.
 
@@ -168,7 +179,7 @@ Work tickets in this order:
 
 **Find open AI-managed Epics:**
 ```bash
-acli jira workitem search --jql "project = {projectKey} AND issuetype = Epic AND summary ~ '[AI-PM]' AND statusCategory NOT IN (Done) ORDER BY updated DESC" --json --limit 10
+acli jira workitem search --jql "project = {projectKey} AND issuetype = Epic AND summary ~ "\\[AI-PM\\]" AND statusCategory NOT IN (Done) ORDER BY updated DESC" --json --limit 10
 ```
 
 **Find incomplete child tickets for an Epic:**
@@ -182,3 +193,5 @@ acli jira workitem search --jql "parent = {projectKey}-{N} ORDER BY rank ASC" --
 ```
 
 > **Note:** Use `NOT IN (Done)` instead of `!= Done` — ACLI escapes the `!` character which breaks the query.
+
+> **Note:** Square brackets `[` `]` are JQL range-query operators. In `summary ~` queries, escape them as `\[AI-PM\]`. Unescaped `[AI-PM]` causes a parse error.
