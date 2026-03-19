@@ -29,6 +29,7 @@ from pathlib import Path
 # Configuration
 # ---------------------------------------------------------------------------
 CACHE_DIR = Path(tempfile.gettempdir()) / "skill-auditor"
+SCAN_CACHE_DIR = Path.home() / ".cache" / "skill-auditor"
 CACHE_TTL = int(os.environ.get("SKILL_AUDITOR_CACHE_TTL", "300"))
 MODEL = os.environ.get("SKILL_AUDITOR_MODEL", "sonnet")
 MAX_FILE_SIZE = 100_000  # 100KB per file
@@ -700,9 +701,51 @@ def run_hook():
 
 
 # ---------------------------------------------------------------------------
+# Persistent scan cache (content-hash based)
+# ---------------------------------------------------------------------------
+def hash_skill_contents(files: dict[str, str]) -> str:
+    """Hash all file contents to detect changes. Same content = same hash."""
+    h = hashlib.sha256()
+    for path in sorted(files.keys()):
+        h.update(path.encode())
+        h.update(files[path].encode())
+    return h.hexdigest()
+
+
+def get_scan_cache(skill_name: str, content_hash: str) -> dict | None:
+    """Check persistent cache for a previous scan of this skill with same content."""
+    cache_file = SCAN_CACHE_DIR / f"{skill_name}.json"
+    if not cache_file.exists():
+        return None
+    try:
+        cached = json.loads(cache_file.read_text())
+        if cached.get("content_hash") == content_hash:
+            return cached
+    except Exception:
+        pass
+    return None
+
+
+def save_scan_cache(skill_name: str, content_hash: str,
+                    risk_level: str, findings_count: int,
+                    summary: str, llm_report: dict):
+    """Save scan result to persistent cache."""
+    SCAN_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    cache_file = SCAN_CACHE_DIR / f"{skill_name}.json"
+    cache_file.write_text(json.dumps({
+        "content_hash": content_hash,
+        "risk_level": risk_level,
+        "findings_count": findings_count,
+        "summary": summary,
+        "llm_report": llm_report,
+        "scanned_at": time.strftime("%Y-%m-%d %H:%M:%S"),
+    }, indent=2))
+
+
+# ---------------------------------------------------------------------------
 # Main: Local scan mode
 # ---------------------------------------------------------------------------
-def scan_local(path: Path):
+def scan_local(path: Path, force: bool = False):
     """Scan a single local skill directory."""
     skill_name = path.name
     print(f"\n{CYAN}🔍 Scanning local skill: {skill_name}{RESET}")
@@ -714,6 +757,23 @@ def scan_local(path: Path):
         return None
 
     print(f"{DIM}   Loaded {len(files)} files{RESET}")
+
+    # Check persistent cache (content-hash based)
+    content_hash = hash_skill_contents(files)
+    if not force:
+        cached = get_scan_cache(skill_name, content_hash)
+        if cached:
+            risk_level = cached["risk_level"]
+            color = RISK_COLORS.get(risk_level, DIM)
+            print(f"  {GREEN}✓ Cached (unchanged since {cached['scanned_at']}){RESET}")
+            print(f"  {BOLD}Risk: {color}{risk_level}{RESET}  "
+                  f"{DIM}({cached['findings_count']} findings){RESET}")
+            if cached.get("summary"):
+                print(f"  {DIM}{cached['summary']}{RESET}")
+            return {"skill": skill_name, "risk_level": risk_level,
+                    "findings_count": cached["findings_count"],
+                    "summary": cached.get("summary", ""),
+                    "cached": True}
 
     # Run Aguara on the directory
     aguara_output = run_aguara(str(path))
@@ -728,12 +788,18 @@ def scan_local(path: Path):
     # Display report
     display_report(skill_name, aguara_output, llm_report, risk_level)
 
+    # Save to persistent cache
+    findings_count = len(llm_report.get("findings", []))
+    summary = llm_report.get("summary", "")
+    save_scan_cache(skill_name, content_hash, risk_level,
+                    findings_count, summary, llm_report)
+
     return {"skill": skill_name, "risk_level": risk_level,
-            "findings_count": len(llm_report.get("findings", [])),
-            "summary": llm_report.get("summary", "")}
+            "findings_count": findings_count,
+            "summary": summary}
 
 
-def scan_all():
+def scan_all(force: bool = False):
     """Scan all installed skills."""
     skills_dirs = [
         Path.home() / ".agents" / "skills",
@@ -755,22 +821,31 @@ def scan_all():
         print(f"{YELLOW}No installed skills found.{RESET}")
         return
 
-    print(f"\n{BOLD}Scanning {len(all_skills)} installed skills...{RESET}\n")
+    print(f"\n{BOLD}Scanning {len(all_skills)} installed skills...{RESET}")
+    if not force:
+        print(f"{DIM}(Using cache for unchanged skills. Use --force to re-scan all.){RESET}")
+    print()
 
     results = []
+    cached_count = 0
     for skill_path in all_skills:
-        result = scan_local(skill_path)
+        result = scan_local(skill_path, force=force)
         if result:
+            if result.get("cached"):
+                cached_count += 1
             results.append(result)
 
     # Summary table
+    scanned_count = len(results) - cached_count
     print(f"\n{'=' * 60}")
     print(f"  {BOLD}SCAN SUMMARY — {len(results)} skills audited{RESET}")
+    if cached_count:
+        print(f"  {DIM}({cached_count} cached, {scanned_count} freshly scanned){RESET}")
     print(f"{'=' * 60}\n")
 
     for r in sorted(results, key=lambda x: {"CRITICAL": 0, "HIGH": 1,
                                              "MEDIUM": 2, "LOW": 3}
-                    .get(r["risk_level"], 4)):
+                    .get(x["risk_level"], 4)):
         color = RISK_COLORS.get(r["risk_level"], DIM)
         risk_str = f"{color}{r['risk_level'].ljust(8)}{RESET}"
         findings = f"({r['findings_count']} findings)"
@@ -801,6 +876,8 @@ def main():
                         help="Scan a local skill directory")
     parser.add_argument("--scan-all", action="store_true",
                         help="Scan all installed skills")
+    parser.add_argument("--force", action="store_true",
+                        help="Ignore cache and re-scan even if unchanged")
     parser.add_argument("--help", "-h", action="store_true")
 
     # If stdin is not a tty and no args, we're in hook mode
@@ -818,9 +895,9 @@ def main():
         sys.exit(0)
 
     if args.scan_all:
-        scan_all()
+        scan_all(force=args.force)
     elif args.scan_local:
-        scan_local(args.scan_local)
+        scan_local(args.scan_local, force=args.force)
     else:
         # No args and stdin is a tty — show help
         parser.print_help()
