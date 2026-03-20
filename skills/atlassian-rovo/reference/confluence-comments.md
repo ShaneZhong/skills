@@ -145,3 +145,10 @@ The `atlassian-helpers.sh` library provides convenience functions:
 6. **Container type for replies:** When replying via the v1 API, use `"type": "global"` in the `container` object (not `"page"`). The `"id"` field in `container` is the page ID, and the `"id"` in `ancestors` is the parent comment ID.
 
 7. **Inline comment markers in page body:** When a page has inline comments, Confluence wraps the anchored text in `ac:inline-comment-marker` tags in the storage body. Be aware of these when parsing or updating page content.
+
+8. **HTML named entities not rendered:** In Confluence storage format, named HTML entities like `&check;`, `&excl;`, and `&cross;` are **not rendered** — they display as literal text (e.g., `&check;`). Use Unicode characters or numeric entities instead:
+   - `&check;` → use `✅` or `&#10003;`
+   - `&excl;` → use `⚠️` or `&#10071;`
+   - `&cross;` → use `❌` or `&#10007;`
+
+   This applies to any content created or updated via the REST API.
