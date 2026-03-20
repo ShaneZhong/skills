@@ -213,7 +213,7 @@ confluence_reply_to_comment() {
 import json, sys
 print(json.dumps({
   'type': 'comment',
-  'container': {'id': sys.argv[1], 'type': 'page'},
+  'container': {'id': sys.argv[1], 'type': 'global'},
   'ancestors': [{'id': sys.argv[2]}],
   'body': {'storage': {'value': sys.argv[3], 'representation': 'storage'}}
 }))
@@ -224,6 +224,7 @@ print(json.dumps({
     -X POST \
     -u "${ATLASSIAN_EMAIL}:${ATLASSIAN_API_TOKEN}" \
     -H "Content-Type: application/json" \
+    -H "X-Atlassian-Token: no-check" \
     -d "$payload" \
     "${ATLASSIAN_SITE}/wiki/rest/api/content")
   http_code=$(echo "$response" | tail -1)

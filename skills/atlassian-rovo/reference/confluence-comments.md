@@ -94,15 +94,18 @@ Replies use the **v1 API** with the `ancestors` array to thread under a parent c
 curl -s -X POST "https://{site}/wiki/rest/api/content" \
   -u "$ATLASSIAN_EMAIL:$ATLASSIAN_API_TOKEN" \
   -H "Content-Type: application/json" \
+  -H "X-Atlassian-Token: no-check" \
   -d '{
     "type": "comment",
-    "container": {"id": "{pageId}", "type": "page"},
+    "container": {"id": "{pageId}", "type": "global"},
     "ancestors": [{"id": "{parentCommentId}"}],
     "body": {"storage": {"value": "<p>Reply text</p>", "representation": "storage"}}
   }'
 ```
 
 > **Why v1?** The v2 API returns HTTP 405 when POSTing to `.../children`. The v1 ancestors pattern is the only working approach for threaded replies.
+>
+> **Critical:** The `X-Atlassian-Token: no-check` header is **required** — without it the API returns 401 Unauthorized.
 
 ### Add a Jira issue comment
 
@@ -137,4 +140,8 @@ The `atlassian-helpers.sh` library provides convenience functions:
 
 4. **Reply threading:** Both footer and inline comments support reply threads. Use v2 GET `.../children` to read replies, but v1 POST with `ancestors` to create replies.
 
-5. **Inline comment markers in page body:** When a page has inline comments, Confluence wraps the anchored text in `ac:inline-comment-marker` tags in the storage body. Be aware of these when parsing or updating page content.
+5. **`X-Atlassian-Token: no-check` required for v1 replies:** The v1 `POST /wiki/rest/api/content` endpoint requires the `X-Atlassian-Token: no-check` header. Without it, the API returns 401 Unauthorized even with valid credentials. This header is not needed for v2 API calls.
+
+6. **Container type for replies:** When replying via the v1 API, use `"type": "global"` in the `container` object (not `"page"`). The `"id"` field in `container` is the page ID, and the `"id"` in `ancestors` is the parent comment ID.
+
+7. **Inline comment markers in page body:** When a page has inline comments, Confluence wraps the anchored text in `ac:inline-comment-marker` tags in the storage body. Be aware of these when parsing or updating page content.
