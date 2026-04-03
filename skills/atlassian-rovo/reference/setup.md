@@ -44,14 +44,14 @@ ATLASSIAN_SITE="https://yoursite.atlassian.net"
 > export ATLASSIAN_SITE="${ATLASSIAN_BASE_URL}"
 > ```
 
-For Claude Code, source this file before running commands. Other agents can set these as environment variables in their own configuration.
+For Claude Code, load and export this file with `set -a; source .env; set +a` before running commands. Other agents can set these as environment variables in their own configuration.
 
 ## Step 4: Authenticate ACLI
 
 Source your `.env` and log in:
 
 ```bash
-source .env
+set -a; source .env; set +a
 # ACLI expects the bare domain (e.g., mysite.atlassian.net), not the full URL.
 # Strip the https:// prefix if your ATLASSIAN_SITE includes it:
 ACLI_SITE="${ATLASSIAN_SITE#https://}"
@@ -76,7 +76,7 @@ acli jira workitem search --jql "project = YOUR_PROJECT_KEY ORDER BY created DES
 
 ```bash
 # Search for pages using the REST API
-source .env
+set -a; source .env; set +a
 curl -s -u "$ATLASSIAN_EMAIL:$ATLASSIAN_API_TOKEN" \
   "$ATLASSIAN_SITE/wiki/rest/api/content?limit=5&type=page" \
   | python3 -m json.tool | head -20
@@ -109,7 +109,7 @@ ACLI isn't installed or not on your PATH. Re-run `brew install acli` and ensure 
 ### `401 Unauthorized` from curl
 Your API token or email is incorrect. Verify:
 ```bash
-source .env
+set -a; source .env; set +a
 curl -s -u "$ATLASSIAN_EMAIL:$ATLASSIAN_API_TOKEN" \
   "$ATLASSIAN_SITE/wiki/rest/api/user/current" | python3 -m json.tool
 ```
@@ -128,7 +128,7 @@ Your API token may lack the necessary scopes. Ensure the Atlassian account has r
 
 ### Agent-Specific Notes
 
-- **Claude Code**: Source `.env` in your shell or add `source .env` to your workflow scripts. Claude Code can read `.env` files directly.
+- **Claude Code**: Use `set -a; source .env; set +a` to load and export credentials before running commands. Plain `source .env` does not export variables, so child processes (like Python via `os.environ`) won't see them.
 - **Cursor / Cline / Windsurf**: Set `ATLASSIAN_EMAIL`, `ATLASSIAN_API_TOKEN`, and `ATLASSIAN_SITE` as environment variables in your agent's configuration.
 - **CI/CD**: Store credentials as pipeline secrets and export them as environment variables.
 - **Subshell environments**: In agentic contexts where each shell command runs in a new subprocess, credentials from `source .env` don't persist. Combine sourcing and execution in one command: `bash -c 'set -a; source .env; set +a; <your command>'`.

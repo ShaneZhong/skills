@@ -52,7 +52,7 @@ Install ACLI and authenticate:
 
 ```bash
 brew tap atlassian/homebrew-acli && brew install acli
-source .env
+set -a; source .env; set +a
 # ACLI expects the bare domain, not the full URL — strip the https:// prefix
 ACLI_SITE="${ATLASSIAN_SITE#https://}"
 acli jira auth login \
