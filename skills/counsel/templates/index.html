@@ -1,0 +1,1033 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Counsel — AI Board Meeting</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #232633;
+    --border: #2d3148;
+    --text: #e4e6f0;
+    --text-dim: #8b8fa8;
+    --accent: #6c7bf7;
+    --green: #4ade80;
+    --red: #f87171;
+    --amber: #fbbf24;
+    --blue: #60a5fa;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    line-height: 1.6;
+  }
+
+  /* Header */
+  .header {
+    border-bottom: 1px solid var(--border);
+    padding: 20px 32px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .header h1 {
+    font-size: 20px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+  .header .badge {
+    background: var(--accent);
+    color: white;
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-weight: 600;
+  }
+  .question-bar {
+    padding: 16px 32px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    font-size: 16px;
+    font-weight: 500;
+  }
+  .question-bar .label { color: var(--text-dim); font-size: 12px; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.05em; }
+
+  /* Status */
+  .status-bar {
+    padding: 8px 32px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+    color: var(--text-dim);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .status-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--amber);
+    animation: pulse 2s infinite;
+  }
+  .status-dot.complete { background: var(--green); animation: none; }
+  .status-dot.offline { background: var(--red); animation: none; }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  /* Steps nav */
+  .steps-nav {
+    display: flex;
+    gap: 0;
+    padding: 0 32px;
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+  }
+  .step-tab {
+    padding: 12px 20px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-dim);
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s;
+  }
+  .step-tab:hover { color: var(--text); }
+  .step-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .step-tab.locked { opacity: 0.3; cursor: not-allowed; }
+  .step-tab .count {
+    background: var(--surface2);
+    padding: 1px 6px;
+    border-radius: 8px;
+    font-size: 11px;
+    margin-left: 6px;
+  }
+
+  /* Main content */
+  .main { padding: 24px 32px; max-width: 1400px; margin: 0 auto; }
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  /* Roundtable */
+  .roundtable {
+    position: relative;
+    width: 100%;
+    max-width: 800px;
+    aspect-ratio: 1;
+    margin: 0 auto 32px;
+  }
+  .table-center {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 200px; height: 200px;
+    border-radius: 50%;
+    background: var(--surface);
+    border: 2px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    z-index: 2;
+  }
+  .table-center .icon { font-size: 32px; margin-bottom: 4px; }
+  .table-center .label { font-size: 12px; color: var(--text-dim); }
+  .advisor-node {
+    position: absolute;
+    width: 120px;
+    text-align: center;
+    transform: translate(-50%, -50%);
+    cursor: pointer;
+    transition: transform 0.2s;
+    z-index: 3;
+  }
+  .advisor-node:hover { transform: translate(-50%, -50%) scale(1.08); }
+  .advisor-avatar {
+    width: 56px; height: 56px;
+    border-radius: 50%;
+    background: var(--surface2);
+    border: 2px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    margin: 0 auto 4px;
+    transition: border-color 0.3s;
+  }
+  .advisor-avatar.green { border-color: var(--green); }
+  .advisor-avatar.red { border-color: var(--red); }
+  .advisor-avatar.amber { border-color: var(--amber); }
+  .advisor-name { font-size: 11px; font-weight: 600; }
+  .advisor-framework { font-size: 10px; color: var(--text-dim); }
+
+  /* Advisor cards list */
+  .advisor-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 16px;
+    margin-top: 16px;
+  }
+  .advisor-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    cursor: pointer;
+    transition: border-color 0.2s;
+  }
+  .advisor-card:hover { border-color: var(--accent); }
+  .advisor-card .card-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+  .advisor-card .card-avatar {
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    background: var(--surface2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    flex-shrink: 0;
+  }
+  .advisor-card .card-name { font-weight: 600; font-size: 14px; }
+  .advisor-card .card-framework { font-size: 12px; color: var(--text-dim); }
+  .advisor-card .card-stance {
+    font-size: 12px;
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-weight: 600;
+    margin-left: auto;
+  }
+  .stance-support { background: rgba(74,222,128,0.15); color: var(--green); }
+  .stance-against { background: rgba(248,113,113,0.15); color: var(--red); }
+  .stance-conditional { background: rgba(251,191,36,0.15); color: var(--amber); }
+  .advisor-card .card-body {
+    font-size: 14px;
+    color: var(--text);
+    line-height: 1.7;
+    max-height: 80px;
+    overflow: hidden;
+    mask-image: linear-gradient(to bottom, black 60%, transparent);
+    -webkit-mask-image: linear-gradient(to bottom, black 60%, transparent);
+  }
+
+  /* Debate section */
+  .dimension-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 16px;
+  }
+  .dimension-title {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .dimension-title .dim-num {
+    background: var(--accent);
+    color: white;
+    width: 24px; height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+  }
+  .debate-thread {
+    border-left: 2px solid var(--border);
+    padding-left: 16px;
+    margin-left: 12px;
+    margin-bottom: 12px;
+  }
+  .debate-msg { margin-bottom: 12px; }
+  .debate-msg .msg-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 4px;
+  }
+  .debate-msg .msg-avatar {
+    width: 24px; height: 24px;
+    border-radius: 50%;
+    background: var(--surface2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+  }
+  .debate-msg .msg-name { font-size: 13px; font-weight: 600; }
+  .debate-msg .msg-body { font-size: 14px; color: var(--text); line-height: 1.7; margin-left: 32px; }
+
+  /* Pre-mortem */
+  .premortem-box {
+    background: rgba(248,113,113,0.08);
+    border: 1px solid rgba(248,113,113,0.3);
+    border-radius: 12px;
+    padding: 24px;
+    margin-top: 16px;
+  }
+  .premortem-box h3 { color: var(--red); margin-bottom: 12px; font-size: 16px; }
+  .premortem-box .body { font-size: 14px; line-height: 1.7; white-space: pre-wrap; }
+
+  /* Synthesis */
+  .synthesis-section { margin-bottom: 24px; }
+  .synthesis-section h3 {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .synthesis-section .content {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    font-size: 14px;
+    line-height: 1.7;
+    white-space: pre-wrap;
+  }
+  .action-items { list-style: none; padding: 0; }
+  .action-items li {
+    padding: 12px 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .action-items li .num {
+    background: var(--accent);
+    color: white;
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+
+  /* Questions panel */
+  .question-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 12px;
+  }
+  .question-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+  }
+  .question-item .q-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+  .question-item .q-avatar {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    background: var(--surface2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+  }
+  .question-item .q-name { font-size: 12px; font-weight: 600; }
+  .question-item .q-text { font-size: 14px; }
+
+  /* Waiting state */
+  .waiting {
+    text-align: center;
+    padding: 80px 20px;
+    color: var(--text-dim);
+  }
+  .waiting .spinner {
+    width: 40px; height: 40px;
+    border: 3px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 16px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Modal */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .modal-overlay.active { display: flex; }
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    max-width: 640px;
+    width: 100%;
+    max-height: 80vh;
+    overflow-y: auto;
+    padding: 32px;
+  }
+  .modal .close-btn {
+    float: right;
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    font-size: 20px;
+    cursor: pointer;
+  }
+  .modal h2 { font-size: 18px; margin-bottom: 4px; }
+  .modal .framework { color: var(--text-dim); font-size: 13px; margin-bottom: 16px; }
+  .modal .full-text { font-size: 14px; line-height: 1.8; white-space: pre-wrap; }
+
+  /* Chat panel */
+  .layout {
+    display: flex;
+    min-height: calc(100vh - 140px);
+  }
+  .chat-panel {
+    width: 360px;
+    min-width: 360px;
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    background: var(--surface);
+  }
+  .chat-panel .chat-header {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-dim);
+  }
+  .chat-panel .chat-header .dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--green);
+  }
+  .chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .chat-msg {
+    max-width: 95%;
+    padding: 10px 14px;
+    border-radius: 12px;
+    font-size: 13px;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  .chat-msg.facilitator {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    align-self: flex-start;
+    border-bottom-left-radius: 4px;
+  }
+  .chat-msg.user {
+    background: var(--accent);
+    color: white;
+    align-self: flex-end;
+    border-bottom-right-radius: 4px;
+  }
+  .chat-msg.system {
+    background: rgba(96,165,250,0.1);
+    border: 1px solid rgba(96,165,250,0.2);
+    color: var(--blue);
+    font-size: 12px;
+    align-self: center;
+    text-align: center;
+    border-radius: 8px;
+  }
+  .chat-msg .sender {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-dim);
+    margin-bottom: 4px;
+  }
+  .chat-msg.user .sender { color: rgba(255,255,255,0.7); }
+  .chat-input-area {
+    padding: 12px 16px;
+    border-top: 1px solid var(--border);
+    font-size: 12px;
+    color: var(--text-dim);
+    text-align: center;
+  }
+  .content-area {
+    flex: 1;
+    overflow-y: auto;
+  }
+
+  @media (max-width: 768px) {
+    .header { padding: 16px; }
+    .main { padding: 16px; }
+    .steps-nav { padding: 0 16px; }
+    .roundtable { max-width: 360px; }
+    .advisor-node { width: 80px; }
+    .advisor-avatar { width: 40px; height: 40px; font-size: 18px; }
+    .advisor-name { font-size: 9px; }
+    .advisor-cards { grid-template-columns: 1fr; }
+    .layout { flex-direction: column; }
+    .chat-panel { width: 100%; min-width: 100%; max-height: 300px; border-right: none; border-bottom: 1px solid var(--border); }
+  }
+</style>
+</head>
+<body>
+  <div class="header">
+    <h1>Counsel</h1>
+    <span class="badge">AI Board Meeting</span>
+  </div>
+
+  <div class="question-bar" id="questionBar">
+    <div class="label">Decision Under Review</div>
+    <div id="questionText">Waiting for session to begin...</div>
+  </div>
+
+  <div class="status-bar">
+    <div class="status-dot" id="statusDot"></div>
+    <span id="statusText">Connecting...</span>
+  </div>
+
+  <div class="layout">
+    <div class="chat-panel">
+      <div class="chat-header">
+        <span class="dot"></span>
+        Facilitator Chat
+      </div>
+      <div class="chat-messages" id="chatMessages">
+        <div class="chat-msg system">Session starting... interact in the terminal, conversation syncs here in real-time.</div>
+      </div>
+      <div class="chat-input-area">
+        Input via terminal &mdash; synced here live
+      </div>
+    </div>
+
+    <div class="content-area">
+      <div class="steps-nav" id="stepsNav">
+        <div class="step-tab active" data-panel="questions" id="tabQuestions">
+          Questions <span class="count" id="countQuestions">0</span>
+        </div>
+        <div class="step-tab locked" data-panel="statements" id="tabStatements">
+          Advisor Statements <span class="count" id="countStatements">0</span>
+        </div>
+        <div class="step-tab locked" data-panel="debate" id="tabDebate">
+          Debate <span class="count" id="countDebates">0</span>
+        </div>
+        <div class="step-tab locked" data-panel="synthesis" id="tabSynthesis">
+          Synthesis
+        </div>
+      </div>
+
+      <div class="main">
+        <div class="panel active" id="panelQuestions">
+          <div class="waiting" id="waitingQuestions">
+            <div class="spinner"></div>
+            <div>Advisors are formulating their questions...</div>
+          </div>
+          <div class="question-list" id="questionList"></div>
+        </div>
+
+        <div class="panel" id="panelStatements">
+          <div class="roundtable" id="roundtable">
+            <div class="table-center">
+              <div class="icon">&#x1f3db;</div>
+              <div class="label">Roundtable</div>
+            </div>
+          </div>
+          <h3 style="margin-bottom: 12px; font-size: 14px; color: var(--text-dim);">Click an advisor to read their full statement</h3>
+          <div class="advisor-cards" id="statementCards"></div>
+        </div>
+
+        <div class="panel" id="panelDebate">
+          <div id="debateDimensions"></div>
+          <div id="preMortemBox"></div>
+        </div>
+
+        <div class="panel" id="panelSynthesis">
+          <div id="synthesisContent"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="modalOverlay">
+    <div class="modal">
+      <button class="close-btn" id="modalClose">&times;</button>
+      <h2 id="modalName"></h2>
+      <div class="framework" id="modalFramework"></div>
+      <div class="full-text" id="modalText"></div>
+    </div>
+  </div>
+
+<script>
+(function() {
+'use strict';
+
+// Advisor registry — loaded from server (SSOT in advisors.json)
+let ADVISORS = [];
+const advisorById = (id) => ADVISORS.find(a => a.id === id) || { id, emoji: '\u2753', name: id || 'Unknown', framework: '' };
+
+// Authoritative state. We only mutate via replaceState() to keep rendering idempotent.
+let state = {
+  question: '',
+  status: 'waiting',
+  advisor_questions: [], // deduped by advisor_id
+  statements: [],        // deduped by advisor_id
+  dimensions: [],
+  debates: [],           // append-only; dedup via debateKey below
+  premortem: null,
+  synthesis: null,
+  chat: []               // append-only; dedup via chatKey below
+};
+
+const seenDebateKeys = new Set();
+const seenChatKeys = new Set();
+
+function debateKey(d) {
+  if (!d) return Math.random().toString(36);
+  const dim = d.dimension || d.title || '';
+  const n = (d.messages || []).length;
+  const firstText = (d.messages && d.messages[0] && d.messages[0].text) || '';
+  return dim + '|' + n + '|' + firstText.slice(0, 64);
+}
+
+function chatKey(m) {
+  if (!m) return Math.random().toString(36);
+  return (m.role || '') + '|' + (m.text || '').slice(0, 200);
+}
+
+function upsertById(arr, item) {
+  if (!item) return arr;
+  const id = item.advisor_id;
+  if (!id) { arr.push(item); return arr; }
+  const idx = arr.findIndex(x => x.advisor_id === id);
+  if (idx >= 0) arr[idx] = item; else arr.push(item);
+  return arr;
+}
+
+// --- Rendering ---
+
+function escHtml(s) {
+  const d = document.createElement('div');
+  d.textContent = s == null ? '' : String(s);
+  return d.innerHTML;
+}
+
+function setStatus(status, msg) {
+  const dot = document.getElementById('statusDot');
+  const text = document.getElementById('statusText');
+  dot.className = 'status-dot' + (status === 'complete' ? ' complete' : status === 'offline' ? ' offline' : '');
+  text.textContent = msg;
+}
+
+function unlockTab(id) {
+  document.getElementById(id).classList.remove('locked');
+}
+
+function renderQuestion() {
+  document.getElementById('questionText').textContent = state.question || 'Waiting for session to begin...';
+}
+
+function renderQuestions() {
+  document.getElementById('waitingQuestions').style.display = state.advisor_questions.length ? 'none' : '';
+  document.getElementById('countQuestions').textContent = state.advisor_questions.length;
+  const list = document.getElementById('questionList');
+  list.innerHTML = '';
+  state.advisor_questions.forEach(q => {
+    const a = advisorById(q.advisor_id);
+    const el = document.createElement('div');
+    el.className = 'question-item';
+    el.innerHTML = `<div class="q-header">
+        <div class="q-avatar"></div>
+        <div><div class="q-name"></div></div>
+      </div>
+      <div class="q-text"></div>`;
+    el.querySelector('.q-avatar').textContent = a.emoji;
+    el.querySelector('.q-name').textContent = a.name;
+    el.querySelector('.q-text').textContent = q.question || '';
+    list.appendChild(el);
+  });
+}
+
+function renderStatements() {
+  document.getElementById('countStatements').textContent = state.statements.length;
+  if (state.statements.length) unlockTab('tabStatements');
+
+  // Roundtable
+  const rt = document.getElementById('roundtable');
+  rt.querySelectorAll('.advisor-node').forEach(n => n.remove());
+  const cx = 50, cy = 50, r = 42;
+  const n = state.statements.length || 1;
+  state.statements.forEach((s, i) => {
+    const angle = (2 * Math.PI * i / n) - Math.PI / 2;
+    const x = cx + r * Math.cos(angle);
+    const y = cy + r * Math.sin(angle);
+    const a = advisorById(s.advisor_id);
+    const stanceClass = stanceClassOf(s.stance);
+    const node = document.createElement('div');
+    node.className = 'advisor-node';
+    node.style.left = x + '%';
+    node.style.top = y + '%';
+    node.dataset.advisorId = s.advisor_id || '';
+    node.innerHTML = `<div class="advisor-avatar ${stanceClass}"></div>
+      <div class="advisor-name"></div>
+      <div class="advisor-framework"></div>`;
+    node.querySelector('.advisor-avatar').textContent = a.emoji;
+    node.querySelector('.advisor-name').textContent = a.name;
+    node.querySelector('.advisor-framework').textContent = a.framework;
+    rt.appendChild(node);
+  });
+
+  // Cards
+  const cards = document.getElementById('statementCards');
+  cards.innerHTML = '';
+  state.statements.forEach(s => {
+    const a = advisorById(s.advisor_id);
+    const stanceLabel = (s.stance || 'Analyzing');
+    const stanceClass = 'stance-' + (stanceClassOf(s.stance) === 'green' ? 'support' : stanceClassOf(s.stance) === 'red' ? 'against' : 'conditional');
+    const card = document.createElement('div');
+    card.className = 'advisor-card';
+    card.dataset.advisorId = s.advisor_id || '';
+    card.innerHTML = `<div class="card-header">
+        <div class="card-avatar"></div>
+        <div>
+          <div class="card-name"></div>
+          <div class="card-framework"></div>
+        </div>
+        <span class="card-stance"></span>
+      </div>
+      <div class="card-body"></div>`;
+    card.querySelector('.card-avatar').textContent = a.emoji;
+    card.querySelector('.card-name').textContent = a.name;
+    card.querySelector('.card-framework').textContent = a.framework;
+    const stanceEl = card.querySelector('.card-stance');
+    stanceEl.className = 'card-stance ' + stanceClass;
+    stanceEl.textContent = stanceLabel;
+    card.querySelector('.card-body').textContent = s.summary || s.statement || '';
+    cards.appendChild(card);
+  });
+}
+
+function stanceClassOf(stance) {
+  const s = (stance || '').toLowerCase();
+  if (s.includes('support')) return 'green';
+  if (s.includes('against')) return 'red';
+  return 'amber';
+}
+
+function renderDebates() {
+  document.getElementById('countDebates').textContent = state.debates.length;
+  if (state.debates.length) unlockTab('tabDebate');
+  const container = document.getElementById('debateDimensions');
+  container.innerHTML = '';
+  state.debates.forEach((d, i) => {
+    const section = document.createElement('div');
+    section.className = 'dimension-section';
+    section.innerHTML = `<div class="dimension-title">
+        <span class="dim-num">${i + 1}</span>
+        <span class="dim-label"></span>
+      </div>
+      <div class="debate-thread"></div>`;
+    section.querySelector('.dim-label').textContent = d.dimension || d.title || ('Dimension ' + (i + 1));
+    const thread = section.querySelector('.debate-thread');
+    (d.messages || []).forEach(m => {
+      const a = advisorById(m.advisor_id);
+      const msg = document.createElement('div');
+      msg.className = 'debate-msg';
+      msg.innerHTML = `<div class="msg-header">
+          <div class="msg-avatar"></div>
+          <div class="msg-name"></div>
+        </div>
+        <div class="msg-body"></div>`;
+      msg.querySelector('.msg-avatar').textContent = a.emoji;
+      msg.querySelector('.msg-name').textContent = a.name;
+      msg.querySelector('.msg-body').textContent = m.text || '';
+      thread.appendChild(msg);
+    });
+    container.appendChild(section);
+  });
+}
+
+function renderPreMortem() {
+  const box = document.getElementById('preMortemBox');
+  box.innerHTML = '';
+  if (!state.premortem) return;
+  const div = document.createElement('div');
+  div.className = 'premortem-box';
+  div.innerHTML = `<h3>&#x1f480; Pre-Mortem: What Went Wrong</h3><div class="body"></div>`;
+  div.querySelector('.body').textContent = state.premortem.text || state.premortem.scenario || '';
+  box.appendChild(div);
+}
+
+function renderSynthesis() {
+  const container = document.getElementById('synthesisContent');
+  container.innerHTML = '';
+  const s = state.synthesis;
+  if (!s) return;
+  unlockTab('tabSynthesis');
+
+  const sections = [
+    ['\u2705 Consensus', s.consensus],
+    ['\u26a0\ufe0f Unresolved Tensions', s.tensions],
+    ['\u2696\ufe0f Final Verdict', s.verdict]
+  ];
+  sections.forEach(([title, body]) => {
+    if (!body) return;
+    const sec = document.createElement('div');
+    sec.className = 'synthesis-section';
+    sec.innerHTML = `<h3></h3><div class="content"></div>`;
+    sec.querySelector('h3').textContent = title;
+    sec.querySelector('.content').textContent = body;
+    container.appendChild(sec);
+  });
+
+  if (s.actions && s.actions.length) {
+    const sec = document.createElement('div');
+    sec.className = 'synthesis-section';
+    sec.innerHTML = `<h3>\u{1f3af} Action Items</h3><ul class="action-items"></ul>`;
+    const ul = sec.querySelector('.action-items');
+    s.actions.forEach((a, i) => {
+      const li = document.createElement('li');
+      li.innerHTML = `<span class="num">${i + 1}</span><span class="action-text"></span>`;
+      li.querySelector('.action-text').textContent = a;
+      ul.appendChild(li);
+    });
+    container.appendChild(sec);
+  }
+}
+
+function addChatMessage(msg, skipDedup) {
+  if (!msg) return;
+  const key = chatKey(msg);
+  if (!skipDedup && seenChatKeys.has(key)) return;
+  seenChatKeys.add(key);
+  state.chat.push(msg);
+
+  const container = document.getElementById('chatMessages');
+  const div = document.createElement('div');
+  const role = msg.role || 'system';
+  div.className = 'chat-msg ' + role;
+  const senderName = role === 'facilitator' ? 'Facilitator' : role === 'user' ? 'You' : '';
+  if (senderName) {
+    const s = document.createElement('div');
+    s.className = 'sender';
+    s.textContent = senderName;
+    div.appendChild(s);
+  }
+  const body = document.createElement('div');
+  body.textContent = msg.text || '';
+  div.appendChild(body);
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+}
+
+// --- Modal (event delegation, no inline handlers) ---
+
+function openModal(advisorId) {
+  const s = state.statements.find(x => x.advisor_id === advisorId);
+  if (!s) return;
+  const a = advisorById(advisorId);
+  document.getElementById('modalName').textContent = a.name;
+  document.getElementById('modalFramework').textContent = a.framework;
+  document.getElementById('modalText').textContent = s.statement || s.summary || '';
+  document.getElementById('modalOverlay').classList.add('active');
+}
+
+function closeModal() {
+  document.getElementById('modalOverlay').classList.remove('active');
+}
+
+// --- Wire up delegated listeners ---
+
+document.addEventListener('click', (e) => {
+  // Advisor card or roundtable node -> open modal
+  const card = e.target.closest('.advisor-card, .advisor-node');
+  if (card && card.dataset.advisorId) {
+    openModal(card.dataset.advisorId);
+    return;
+  }
+  // Modal close
+  if (e.target.id === 'modalClose' || e.target.id === 'modalOverlay') {
+    closeModal();
+    return;
+  }
+  // Tab switch
+  const tab = e.target.closest('.step-tab');
+  if (tab && !tab.classList.contains('locked')) {
+    document.querySelectorAll('.step-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    const key = tab.dataset.panel;
+    const pid = 'panel' + key.charAt(0).toUpperCase() + key.slice(1);
+    const panel = document.getElementById(pid);
+    if (panel) panel.classList.add('active');
+  }
+});
+
+// --- Event handlers (SSE + initial load) ---
+
+function applyEvent(type, data) {
+  if (type === 'init') {
+    state.question = (data && data.question) || state.question;
+    renderQuestion();
+    setStatus('running', 'Session started');
+  } else if (type === 'advisor_question') {
+    upsertById(state.advisor_questions, data);
+    renderQuestions();
+    setStatus('running', `${state.advisor_questions.length}/12 advisor questions received`);
+  } else if (type === 'advisor_statement') {
+    upsertById(state.statements, data);
+    renderStatements();
+    setStatus('running', `${state.statements.length}/12 statements received`);
+  } else if (type === 'dimensions') {
+    state.dimensions = Array.isArray(data) ? data : [];
+    unlockTab('tabDebate');
+    setStatus('running', 'Conflict dimensions identified');
+  } else if (type === 'debate') {
+    const k = debateKey(data);
+    if (!seenDebateKeys.has(k)) {
+      seenDebateKeys.add(k);
+      state.debates.push(data);
+      renderDebates();
+      setStatus('running', `Debate round ${state.debates.length} complete`);
+    }
+  } else if (type === 'premortem') {
+    state.premortem = data || null;
+    renderPreMortem();
+  } else if (type === 'synthesis') {
+    state.synthesis = data || null;
+    renderSynthesis();
+    setStatus('complete', 'Board meeting complete');
+  } else if (type === 'chat') {
+    addChatMessage(data);
+  } else if (type === 'status') {
+    const s = (data && data.status) || 'running';
+    setStatus(s, (data && data.message) || '');
+  }
+}
+
+// --- SSE with Last-Event-ID reconnect ---
+
+let sseLastId = 0;
+function connectSSE() {
+  const es = new EventSource('/api/events');
+  const eventTypes = ['init', 'advisor_question', 'advisor_statement', 'dimensions',
+                      'debate', 'premortem', 'synthesis', 'chat', 'status'];
+  eventTypes.forEach(t => {
+    es.addEventListener(t, (e) => {
+      if (e.lastEventId) sseLastId = Math.max(sseLastId, parseInt(e.lastEventId, 10) || 0);
+      try {
+        applyEvent(t, JSON.parse(e.data));
+      } catch (err) {
+        console.error('bad event', t, err);
+      }
+    });
+  });
+  es.onopen = () => {
+    if (state.status !== 'complete') setStatus('running', 'Connected');
+  };
+  es.onerror = () => {
+    setStatus('offline', 'Connection lost — reconnecting...');
+    es.close();
+    setTimeout(connectSSE, 2000);
+  };
+}
+
+// --- Initial load (hydrate state from /api/session) ---
+
+async function loadAdvisors() {
+  try {
+    const r = await fetch('/api/advisors');
+    if (r.ok) ADVISORS = await r.json();
+  } catch (e) {
+    console.error('failed to load advisors', e);
+  }
+}
+
+async function loadSession() {
+  try {
+    const r = await fetch('/api/session');
+    const d = await r.json();
+
+    if (d.question) state.question = d.question;
+    renderQuestion();
+
+    if (Array.isArray(d.advisor_questions)) {
+      d.advisor_questions.forEach(q => upsertById(state.advisor_questions, q));
+      renderQuestions();
+    }
+    if (Array.isArray(d.statements)) {
+      d.statements.forEach(s => upsertById(state.statements, s));
+      renderStatements();
+    }
+    if (Array.isArray(d.dimensions) && d.dimensions.length) {
+      state.dimensions = d.dimensions;
+      unlockTab('tabDebate');
+    }
+    if (Array.isArray(d.debates)) {
+      d.debates.forEach(deb => {
+        const k = debateKey(deb);
+        if (!seenDebateKeys.has(k)) {
+          seenDebateKeys.add(k);
+          state.debates.push(deb);
+        }
+      });
+      renderDebates();
+    }
+    if (d.premortem) { state.premortem = d.premortem; renderPreMortem(); }
+    if (d.synthesis) { state.synthesis = d.synthesis; renderSynthesis(); }
+    if (Array.isArray(d.chat)) d.chat.forEach(m => addChatMessage(m));
+
+    setStatus(d.status || 'waiting',
+      d.status === 'complete' ? 'Board meeting complete' : 'Connected');
+  } catch (e) {
+    setStatus('offline', 'Waiting for session...');
+  }
+}
+
+// Boot
+(async () => {
+  await loadAdvisors();
+  await loadSession();
+  connectSSE();
+})();
+
+})();
+</script>
+</body>
+</html>

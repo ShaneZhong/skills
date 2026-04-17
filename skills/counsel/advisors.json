@@ -1,0 +1,14 @@
+[
+  {"id": "jobs", "name": "Steve Jobs", "emoji": "\ud83c\udf4e", "framework": "Product \u00b7 Minimalism", "lens": "Product intuition, obsessive detail, user experience"},
+  {"id": "pg", "name": "Paul Graham", "emoji": "\ud83d\udfe0", "framework": "YC \u00b7 Startups", "lens": "Build what users want, PMF, do things that don't scale"},
+  {"id": "bezos", "name": "Jeff Bezos", "emoji": "\ud83d\udce6", "framework": "Customer \u00b7 Long-term", "lens": "Customer obsession, work backwards, Day 1 mentality"},
+  {"id": "musk", "name": "Elon Musk", "emoji": "\ud83d\ude80", "framework": "First Principles", "lens": "Extreme execution, high-risk high-reward, physics thinking"},
+  {"id": "buffett", "name": "Warren Buffett", "emoji": "\ud83d\udcb0", "framework": "Value \u00b7 Risk", "lens": "Circle of competence, margin of safety, long-term compounding"},
+  {"id": "dalio", "name": "Ray Dalio", "emoji": "\ud83d\udcca", "framework": "Principles \u00b7 Systems", "lens": "Radical transparency, systematic decision-making, idea meritocracy"},
+  {"id": "munger", "name": "Charlie Munger", "emoji": "\ud83e\udde0", "framework": "Mental Models", "lens": "Inversion, multidisciplinary lattice, avoiding stupidity > seeking brilliance"},
+  {"id": "kelly", "name": "Kevin Kelly", "emoji": "\ud83c\udf10", "framework": "Tech \u00b7 Emergence", "lens": "Long-term trends, ecosystems, technology wants, 1000 true fans"},
+  {"id": "a16z", "name": "Marc Andreessen", "emoji": "\ud83e\udd8a", "framework": "VC \u00b7 Market Timing", "lens": "Software eats world, technology waves, market timing"},
+  {"id": "naval", "name": "Naval Ravikant", "emoji": "\u26a1", "framework": "Leverage \u00b7 Wealth", "lens": "Specific knowledge, leverage (code/media/capital), judgment over labor"},
+  {"id": "thiel", "name": "Peter Thiel", "emoji": "\u265f\ufe0f", "framework": "Contrarian \u00b7 Monopoly", "lens": "Zero to one, definite optimism, monopoly > competition"},
+  {"id": "einstein", "name": "Albert Einstein", "emoji": "\u269b\ufe0f", "framework": "Thought Experiments", "lens": "First principles via analogy, elegant simplicity, questioning assumptions"}
+]
