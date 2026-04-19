@@ -36,9 +36,17 @@ A video is added to `used_videos.json` ONLY after the **full downstream pipeline
 
 ### Step 1 — Run the search
 
+When this skill loads, the system tells you the **base directory** (e.g. `Base directory for this skill: /Users/shane/.claude/skills/youtube-ai-interview-finder`). Use that to construct the script path. The env vars `$CLAUDE_PLUGIN_ROOT` and `$CLAUDE_SKILL_DIR` are **not reliably set** for locally-installed skills — always derive from the base directory.
+
 ```bash
 /Users/shane/Documents/playground/.venv/bin/python \
-  $CLAUDE_PLUGIN_ROOT/scripts/find_video.py
+  <base_directory>/scripts/find_video.py
+```
+
+For example, when locally installed:
+```bash
+/Users/shane/Documents/playground/.venv/bin/python \
+  /Users/shane/.claude/skills/youtube-ai-interview-finder/scripts/find_video.py
 ```
 
 This:
@@ -107,7 +115,7 @@ If `substack-writer` fails, do NOT append — the video is still eligible tomorr
 
 | Path | Purpose |
 |------|---------|
-| `$CLAUDE_PLUGIN_ROOT/scripts/find_video.py` | Apify caller |
+| `<skill_base_dir>/scripts/find_video.py` | Apify caller (skill_base_dir given on skill load) |
 | `~/Documents/playground/.env` (APIFY_TOKEN) | Auth |
 | `~/Documents/playground/ai_writing/auto_youtube_finder/used_videos.json` | Dedup ledger (append after publish) |
 | `~/Documents/playground/ai_writing/auto_youtube_finder/candidates_raw_{date}.json` | Raw Apify dump |
